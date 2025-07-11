@@ -1,5 +1,6 @@
 import telebot
 import requests
+from telebot import types
 from config import API_TOKEN, WEATHER_API_KEY, NEWS_API_KEY
 #import os
 #from dotenv import load_dotenv
@@ -55,10 +56,10 @@ def weather_handler(message):
             bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
             return
 
-        temp = data['main']['temp']
+        temp = round(data['main']['temp']) # Проверить, как отображаются отрицательные температуры
         descr = data['weather'][0]['description']
         humidity = data['main']['humidity']
-        wind = data['wind']['speed']
+        wind = round(data['wind']['speed'])
         msg = (f"Погода в городе {city}:\n"
                f"{descr.capitalize()}\n"
                f"Температура: {temp}°C\n"
@@ -66,13 +67,36 @@ def weather_handler(message):
                f"Ветер: {wind} м/с")
         bot.send_message(message.chat.id, msg)
     except Exception as e:
+        print(f'Ошибка: {e}')
         bot.send_message(message.chat.id, "Произошла ошибка при получении погоды.")
 
 # /news
 @bot.message_handler(commands=["news"])
 def news_handler(message):
-    bot.send_message(message.chat.id,
-                     "Функция новостей в разработке! Главная новость: команда отлично справляется!")
+    articles = get_news()
+    if not articles:
+        bot.send_message(message.chat.id, "Не удалось получить новости. Попробуйте позже.")
+        return
+
+    # Отправим 5 свежих новостей без кнопки
+    news_messages = []
+    for article in articles[:5]:
+        title = article.get('title', 'Без заголовка')
+        url = article.get('url', '')
+        news_messages.append(f"{title}\n{url}")
+
+    bot.send_message(message.chat.id, "\n\n".join(news_messages))
+
+    # # Отправим 5 свежих новостей, к каждой — кнопку "Подробнее"
+    # for article in articles[:5]:
+    #     title = article.get('title', 'Без заголовка')
+    #     url = article.get('url', '')
+    #
+    #     markup = types.InlineKeyboardMarkup()
+    #     if url:
+    #         markup.add(types.InlineKeyboardButton("Подробнее", url=url))
+    #
+    #     bot.send_message(message.chat.id, title, reply_markup=markup)
 
 # /events
 @bot.message_handler(commands=["events"])
