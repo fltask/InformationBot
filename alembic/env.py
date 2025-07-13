@@ -70,3 +70,7 @@ def run_migrations_online():
 
         with context.begin_transaction():
             context.run_migrations()
+
+print("TABLES:")
+for t in target_metadata.tables:
+    print("-", t)
