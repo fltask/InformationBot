@@ -1,24 +1,27 @@
-import telebot
-import requests
-from telebot import types
-from config import API_TOKEN, WEATHER_API_KEY, NEWS_API_KEY
 import os
+
+import requests
+import telebot
 from dotenv import load_dotenv
 
 # Загрузка токена из файла .env
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 bot = telebot.TeleBot(TOKEN)
+
 
 def get_weather(city):
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=ru"
     response = requests.get(url)
     return response.json()
 
+
 def get_news():
-   url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
-   response = requests.get(url)
-   return response.json().get('articles', [])
+    url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
+    response = requests.get(url)
+    return response.json().get('articles', [])
 
 
 # /start
@@ -27,6 +30,7 @@ def start_handler(message):
     bot.send_message(message.chat.id,
                      "Привет! Я твой информационный помощник. \n\n"
                      "Набери /help, чтобы узнать, что я умею.")
+
 
 # /help
 @bot.message_handler(commands=["help"])
@@ -39,10 +43,10 @@ def help_handler(message):
                      "/news - свежие новости (в разработке)\n"
                      "/events - события рядом (в разработке)")
 
+
 # /weather
 @bot.message_handler(commands=["weather"])
 def weather_handler(message):
-
     try:
         # Получить название города после команды
         parts = message.text.split(maxsplit=1)
@@ -56,7 +60,7 @@ def weather_handler(message):
             bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
             return
 
-        temp = round(data['main']['temp']) # Проверить, как отображаются отрицательные температуры
+        temp = round(data['main']['temp'])  # Проверить, как отображаются отрицательные температуры
         descr = data['weather'][0]['description']
         humidity = data['main']['humidity']
         wind = round(data['wind']['speed'])
@@ -69,6 +73,7 @@ def weather_handler(message):
     except Exception as e:
         print(f'Ошибка: {e}')
         bot.send_message(message.chat.id, "Произошла ошибка при получении погоды.")
+
 
 # /news
 @bot.message_handler(commands=["news"])
@@ -98,11 +103,13 @@ def news_handler(message):
     #
     #     bot.send_message(message.chat.id, title, reply_markup=markup)
 
+
 # /events
 @bot.message_handler(commands=["events"])
 def events_handler(message):
     bot.send_message(message.chat.id,
                      "События скоро будут доступны! Событие дня: вы молодец!")
+
 
 # Запуск бота
 if __name__ == "__main__":
