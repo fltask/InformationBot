@@ -5,7 +5,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
 load_dotenv()
 
-from database.models import Base  # Импортируем Base
+from database import models
+
+from database.base import Base  # Импортируем Base
 target_metadata = Base.metadata
 
 from logging.config import fileConfig
