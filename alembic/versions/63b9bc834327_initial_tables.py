@@ -18,11 +18,25 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade() -> None:
-    """Upgrade schema."""
-    pass
+def upgrade():
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('telegram_id', sa.String, nullable=False, unique=True),
+        sa.Column('name', sa.String),
+        sa.Column('registered_at', sa.DateTime),
+        sa.Column('subscription_settings', sa.String)
+    )
+
+    op.create_table(
+        'logs',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('user_id', sa.Integer, sa.ForeignKey('users.id')),
+        sa.Column('command', sa.String),
+        sa.Column('timestamp', sa.DateTime)
+    )
 
 
-def downgrade() -> None:
-    """Downgrade schema."""
-    pass
+def downgrade():
+    op.drop_table('logs')
+    op.drop_table('users')
