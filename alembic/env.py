@@ -49,3 +49,5 @@ def run_migrations_online():
 print("TABLES:")
 for t in target_metadata.tables:
     print("-", t)
+
+print("DB URL:", os.getenv("DATABASE_URL"))
