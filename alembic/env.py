@@ -1,12 +1,10 @@
 import os
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from dotenv import load_dotenv
-load_dotenv()
-
-from database import models
-from database.base import Base  # или from database.models import Base
+from database import models  # <--- добавьте эту строку!
+from database.base import Base
 
 target_metadata = Base.metadata
 
@@ -19,7 +17,15 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Получаем строку подключения из alembic.ini
+
+from dotenv import load_dotenv
+
+load_dotenv()
 db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    raise ValueError("DATABASE_URL не задана или пуста! Пропишите её в .env, например: DATABASE_URL=sqlite:///bot.db")
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
@@ -32,6 +38,7 @@ def run_migrations_offline() -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online():
     """Run migrations in 'online' mode."""
@@ -46,8 +53,9 @@ def run_migrations_online():
         with context.begin_transaction():
             context.run_migrations()
 
+
+# Для отладки можно оставить вывод:
 print("TABLES:")
 for t in target_metadata.tables:
     print("-", t)
-
-print("DB URL:", os.getenv("DATABASE_URL"))
+print("DB URL:", db_url)
