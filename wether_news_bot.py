@@ -3,12 +3,16 @@ import os
 import requests
 import telebot
 from dotenv import load_dotenv
+from datetime import datetime
+import locale
 
 # Загрузка токена из файла .env
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+EVENTS_API_KEY=os.getenv("EVENTS_API_KEY")
+
 bot = telebot.TeleBot(TOKEN)
 
 
@@ -22,6 +26,40 @@ def get_news():
     url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
     response = requests.get(url)
     return response.json().get('articles', [])
+
+def get_events(city=None):
+    url = "https://api.timepad.ru/v1/events/"
+    headers = {
+        "Authorization": f"Bearer {EVENTS_API_KEY}"
+    }
+    params = {
+        "sort": "date",  # сортировка по дате
+        "limit": 5,  # сколько событий возвращать
+        "fields": "name,starts_at,description,url,location",  # необходимые поля
+        "is_deleted": False,
+        "is_confirmed": True
+    }
+    if city:
+        params["cities"] = city
+
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code == 200:
+        return response.json().get('values', [])
+    else:
+        print(f"TimePad API error: {response.status_code} {response.text}")
+        return []
+
+try:
+    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+except locale.Error:
+    pass
+
+def format_datetime(dt_str):
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime('%d %B %Y, %H:%M')
+    except Exception:
+        return dt_str
 
 
 # /start
@@ -107,9 +145,34 @@ def news_handler(message):
 # /events
 @bot.message_handler(commands=["events"])
 def events_handler(message):
-    bot.send_message(message.chat.id,
-                     "События скоро будут доступны! Событие дня: вы молодец!")
+    try:
+        parts = message.text.split(maxsplit=1)
+        city = parts[1] if len(parts) > 1 else None
 
+        events = get_events(city)
+        if not events:
+            bot.send_message(message.chat.id, "Не удалось найти события. Попробуйте позже или укажите другой город.")
+            return
+
+        event_messages = []
+        for ev in events:
+            name = ev.get('name', 'Без названия')
+            starts_at = ev.get('starts_at', 'Дата неизвестна')
+            readable_date = format_datetime(starts_at) if starts_at != 'Дата неизвестна' else starts_at
+            url = ev.get('url', '')
+            loc = ev.get('location', {})
+            location_str = ""
+            if isinstance(loc, dict):
+                city_name = loc.get('city', '')
+                address = loc.get('address', '')
+                location_str = f" ({city_name}, {address})" if city_name or address else ""
+            event_messages.append(f"{name}{location_str}\nДата: {readable_date}\n{url}")
+
+        bot.send_message(message.chat.id, "\n\n".join(event_messages))
+
+    except Exception as e:
+        print(f'Ошибка: {e}')
+        bot.send_message(message.chat.id, "Произошла ошибка при получении событий.")
 
 # Запуск бота
 if __name__ == "__main__":
