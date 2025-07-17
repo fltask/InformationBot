@@ -1,1 +1,1 @@
-from .models import User, Log
+# Модуль для работы с базой данных

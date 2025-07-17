@@ -3,12 +3,18 @@ import os
 import requests
 import telebot
 from dotenv import load_dotenv
+from database.config import get_db
+from database.crud import get_or_create_user, create_log
 
 # Загрузка токена из файла .env
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+
+if not TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN не найден в переменных окружения")
+
 bot = telebot.TeleBot(TOKEN)
 
 
@@ -27,40 +33,85 @@ def get_news():
 # /start
 @bot.message_handler(commands=["start"])
 def start_handler(message):
-    bot.send_message(message.chat.id,
-                     "Привет! Я твой информационный помощник. \n\n"
-                     "Набери /help, чтобы узнать, что я умею.")
+    # Получаем сессию базы данных
+    db = next(get_db())
+    try:
+        # Регистрируем пользователя или получаем существующего
+        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+
+        # Логируем команду
+        create_log(db, user.id, "/start")
+
+        bot.send_message(message.chat.id,
+                         f"Привет, {user.name}! Я твой информационный помощник. \n\n"
+                         "Набери /help, чтобы узнать, что я умею.")
+    except Exception as e:
+        print(f"Ошибка при обработке команды /start: {e}")
+        bot.send_message(message.chat.id,
+                         "Привет! Я твой информационный помощник. \n\n"
+                         "Набери /help, чтобы узнать, что я умею.")
+    finally:
+        db.close()
 
 
 # /help
 @bot.message_handler(commands=["help"])
 def help_handler(message):
-    bot.send_message(message.chat.id,
-                     "Доступные команды:\n"
-                     "/start - запустить бота\n"
-                     "/help - показать это меню\n"
-                     "/weather - узнать погоду (в разработке)\n"
-                     "/news - свежие новости (в разработке)\n"
-                     "/events - события рядом (в разработке)")
+    # Получаем сессию базы данных
+    db = next(get_db())
+    try:
+        # Получаем пользователя
+        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+
+        # Логируем команду
+        create_log(db, user.id, "/help")
+
+        bot.send_message(message.chat.id,
+                         "Доступные команды:\n"
+                         "/start - запустить бота\n"
+                         "/help - показать это меню\n"
+                         "/weather - узнать погоду\n"
+                         "/news - свежие новости\n"
+                         "/events - события рядом")
+    except Exception as e:
+        print(f"Ошибка при обработке команды /help: {e}")
+        bot.send_message(message.chat.id,
+                         "Доступные команды:\n"
+                         "/start - запустить бота\n"
+                         "/help - показать это меню\n"
+                         "/weather - узнать погоду\n"
+                         "/news - свежие новости\n"
+                         "/events - события рядом")
+    finally:
+        db.close()
 
 
 # /weather
 @bot.message_handler(commands=["weather"])
 def weather_handler(message):
+    # Получаем сессию базы данных
+    db = next(get_db())
     try:
+        # Получаем пользователя
+        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+
         # Получить название города после команды
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
             bot.send_message(message.chat.id, "Пожалуйста, укажите город. Пример: /weather Москва")
+            # Логируем команду без города
+            create_log(db, user.id, "/weather (без города)")
             return
 
         city = parts[1]
         data = get_weather(city)
         if data.get('cod') != 200:
             bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
+            # Логируем неудачный запрос
+            create_log(db, user.id, f"/weather {city} (город не найден)")
             return
 
-        temp = round(data['main']['temp'])  # Проверить, как отображаются отрицательные температуры
+        temp = round(data['main']['temp'])
         descr = data['weather'][0]['description']
         humidity = data['main']['humidity']
         wind = round(data['wind']['speed'])
@@ -70,27 +121,62 @@ def weather_handler(message):
                f"Влажность: {humidity}%\n"
                f"Ветер: {wind} м/с")
         bot.send_message(message.chat.id, msg)
+
+        # Логируем успешный запрос
+        create_log(db, user.id, f"/weather {city}")
+
     except Exception as e:
         print(f'Ошибка: {e}')
         bot.send_message(message.chat.id, "Произошла ошибка при получении погоды.")
+        # Логируем ошибку
+        try:
+            user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+            create_log(db, user.id, "/weather (ошибка)")
+        except:
+            pass
+    finally:
+        db.close()
 
 
 # /news
 @bot.message_handler(commands=["news"])
 def news_handler(message):
-    articles = get_news()
-    if not articles:
-        bot.send_message(message.chat.id, "Не удалось получить новости. Попробуйте позже.")
-        return
+    # Получаем сессию базы данных
+    db = next(get_db())
+    try:
+        # Получаем пользователя
+        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
 
-    # Отправим 5 свежих новостей без кнопки
-    news_messages = []
-    for article in articles[:5]:
-        title = article.get('title', 'Без заголовка')
-        url = article.get('url', '')
-        news_messages.append(f"{title}\n{url}")
+        articles = get_news()
+        if not articles:
+            bot.send_message(message.chat.id, "Не удалось получить новости. Попробуйте позже.")
+            # Логируем неудачный запрос
+            create_log(db, user.id, "/news (ошибка получения)")
+            return
 
-    bot.send_message(message.chat.id, "\n\n".join(news_messages))
+        # Отправим 5 свежих новостей без кнопки
+        news_messages = []
+        for article in articles[:5]:
+            title = article.get('title', 'Без заголовка')
+            url = article.get('url', '')
+            news_messages.append(f"{title}\n{url}")
+
+        bot.send_message(message.chat.id, "\n\n".join(news_messages))
+
+        # Логируем успешный запрос
+        create_log(db, user.id, "/news")
+
+    except Exception as e:
+        print(f'Ошибка при получении новостей: {e}')
+        bot.send_message(message.chat.id, "Произошла ошибка при получении новостей.")
+        # Логируем ошибку
+        try:
+            user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+            create_log(db, user.id, "/news (ошибка)")
+        except:
+            pass
+    finally:
+        db.close()
 
     # # Отправим 5 свежих новостей, к каждой — кнопку "Подробнее"
     # for article in articles[:5]:
@@ -107,8 +193,23 @@ def news_handler(message):
 # /events
 @bot.message_handler(commands=["events"])
 def events_handler(message):
-    bot.send_message(message.chat.id,
-                     "События скоро будут доступны! Событие дня: вы молодец!")
+    # Получаем сессию базы данных
+    db = next(get_db())
+    try:
+        # Получаем пользователя
+        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+
+        # Логируем команду
+        create_log(db, user.id, "/events")
+
+        bot.send_message(message.chat.id,
+                         "События скоро будут доступны! Событие дня: вы молодец!")
+    except Exception as e:
+        print(f"Ошибка при обработке команды /events: {e}")
+        bot.send_message(message.chat.id,
+                         "События скоро будут доступны! Событие дня: вы молодец!")
+    finally:
+        db.close()
 
 
 # Запуск бота
