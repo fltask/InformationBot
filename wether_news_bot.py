@@ -7,14 +7,14 @@ from database.config import get_db
 from database.crud import (
     get_or_create_user,
     create_log,
-    subscribe_user,
+    update_user_subscription,
     unsubscribe_user,
     )
 from datetime import datetime
 import locale
 
-from config import get_db
-from crud import subscribe_user, unsubscribe_user, get_or_create_user
+from database.config import get_db
+from database.crud import update_user_subscription, unsubscribe_user, get_or_create_user
 
 # Загрузка токена из файла .env
 load_dotenv()
@@ -297,7 +297,7 @@ def subscribe_handler(message):
     db = next(get_db())
     try:
         get_or_create_user(db, message.from_user.id, message.from_user.full_name)
-        subscribe_user(db, message.from_user.id)
+        update_user_subscription(db, message.from_user.id)
         bot.send_message(message.chat.id, "Вы успешно подписались на рассылку!")
     finally:
         db.close()
