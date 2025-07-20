@@ -240,8 +240,8 @@ def events_handler(message):
         # Логируем команду
         create_log(db, user.id, "/events")
 
-        bot.send_message(message.chat.id,
-                         "События скоро будут доступны! Событие дня: вы молодец!")
+        # bot.send_message(message.chat.id,
+        #                  "События скоро будут доступны! Событие дня: вы молодец!")
     except Exception as e:
         print(f"Ошибка при обработке команды /events: {e}")
         bot.send_message(message.chat.id,
