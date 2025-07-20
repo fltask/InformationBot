@@ -4,9 +4,17 @@ import requests
 import telebot
 from dotenv import load_dotenv
 from database.config import get_db
-from database.crud import get_or_create_user, create_log
+from database.crud import (
+    get_or_create_user,
+    create_log,
+    subscribe_user,
+    unsubscribe_user,
+    )
 from datetime import datetime
 import locale
+
+from config import get_db
+from crud import subscribe_user, unsubscribe_user, get_or_create_user
 
 # Загрузка токена из файла .env
 load_dotenv()
@@ -110,7 +118,10 @@ def help_handler(message):
                          "/help - показать это меню\n"
                          "/weather - узнать погоду\n"
                          "/news - свежие новости\n"
-                         "/events - события рядом")
+                         "/events - события рядом\n"
+                         "/subscribe - подписаться на рассылку погоды, новостей и событий\n"
+                         "/unsubscribe - отписаться от рассылок\n"
+                         )
     except Exception as e:
         print(f"Ошибка при обработке команды /help: {e}")
         bot.send_message(message.chat.id,
@@ -119,7 +130,9 @@ def help_handler(message):
                          "/help - показать это меню\n"
                          "/weather - узнать погоду\n"
                          "/news - свежие новости\n"
-                         "/events - события рядом")
+                         "/events - события рядом\n"
+                         "/subscribe - подписаться на рассылку погоды, новостей и событий\n"
+                         "/unsubscribe - отписаться от рассылок\n")
     finally:
         db.close()
 
@@ -277,6 +290,28 @@ def events_handler(message):
     except Exception as e:
         print(f'Ошибка: {e}')
         bot.send_message(message.chat.id, "Произошла ошибка при получении событий.")
+
+# /subscribe
+@bot.message_handler(commands=["subscribe"])
+def subscribe_handler(message):
+    db = next(get_db())
+    try:
+        get_or_create_user(db, message.from_user.id, message.from_user.full_name)
+        subscribe_user(db, message.from_user.id)
+        bot.send_message(message.chat.id, "Вы успешно подписались на рассылку!")
+    finally:
+        db.close()
+
+# /unsubscribe
+@bot.message_handler(commands=["unsubscribe"])
+def unsubscribe_handler(message):
+    db = next(get_db())
+    try:
+        get_or_create_user(db, message.from_user.id, message.from_user.full_name)
+        unsubscribe_user(db, message.from_user.id)
+        bot.send_message(message.chat.id, "Вы отписались от рассылки.")
+    finally:
+        db.close()
 
 # Запуск бота
 if __name__ == "__main__":
