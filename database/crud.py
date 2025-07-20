@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from database.models import User, Log
-from datetime import datetime
 
 
 def create_user(db: Session, telegram_id: int, name: str) -> User:
