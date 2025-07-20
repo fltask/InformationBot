@@ -11,11 +11,11 @@ class User(Base):
     """Модель пользователя"""
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    telegram_id = Column(Integer, unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=False)
     registered_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    subscription_settings = Column(Text, nullable=True)  # JSON строка с настройками подписки
+    subscription_settings = Column(Text, nullable=True, default="unsubscribed")  # JSON строка с настройками подписки
 
     # Связь с логами
     logs = relationship("Log", back_populates="user")
