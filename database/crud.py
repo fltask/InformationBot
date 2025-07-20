@@ -38,11 +38,26 @@ def get_user_logs(db: Session, user_id: int, limit: int = 10) -> list[Log]:
     return db.query(Log).filter(Log.user_id == user_id).order_by(Log.timestamp.desc()).limit(limit).all()
 
 
-def update_user_subscription(db: Session, user_id: int, subscription_settings: str) -> User:
-    """Обновить настройки подписки пользователя"""
-    user = db.query(User).filter(User.id == user_id).first()
+def update_user_subscription(db: Session, subscription_settings: str, user_id: int = None, telegram_id: int = None,) -> User:
+    """Обновить настройки подписки пользователя по user_id или telegram_id"""
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+    elif telegram_id:
+        user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    else:
+        return None
+
     if user:
         user.subscription_settings = subscription_settings
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def unsubscribe_user(db: Session, telegram_id: int):
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if user:
+        user.subscription_settings = "unsubscribed"
         db.commit()
         db.refresh(user)
     return user
