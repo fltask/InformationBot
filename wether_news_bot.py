@@ -87,6 +87,7 @@ def format_datetime(dt_str):
 
 # 5. Функция send_daily_updates
 def send_daily_updates():
+    print(f"[{datetime.now()}] Запуск send_daily_updates") # Проверка работы планировщика APScheduler
     db = next(get_db())
     try:
         users = db.query(User).filter_by(subscription_settings="subscribed").all()
@@ -117,7 +118,7 @@ def send_daily_updates():
                         f"{ev['name']}\n{format_datetime(ev['starts_at'])}\n{ev['url']}"
                         for ev in events[:3]
                     )
-                    bot.send_message(chat_id, f"🎭 События:\n{ev_msg}")
+                    bot.send_message(chat_id, f"События:\n{ev_msg}")
                 else:
                     bot.send_message(chat_id, "Нет новых событий.")
 
@@ -349,7 +350,7 @@ def subscribe_handler(message):
     db = next(get_db())
     try:
         get_or_create_user(db, message.from_user.id, message.from_user.full_name)
-        update_user_subscription(db, message.from_user.id)
+        update_user_subscription(db, "subscribed", telegram_id=message.from_user.id)
         bot.send_message(message.chat.id, "Вы успешно подписались на рассылку!")
     finally:
         db.close()
@@ -368,12 +369,15 @@ def unsubscribe_handler(message):
 
 # 7. Планировка задач APScheduler
 # Добавляем задачу: каждый день в 9:00
-scheduler.add_job(send_daily_updates, 'cron', hour=9, minute=0)
+scheduler.add_job(send_daily_updates, 'interval', minutes=1)
 
 # 8. Запуск бота
 if __name__ == "__main__":
     print("Бот запущен!")
-    try:
-        bot.infinity_polling()
-    except Exception as e:
-        print(f"Ошибка при запуске бота {e}")
+    while True:
+        try:
+            bot.infinity_polling(timeout=30, long_polling_timeout=30)
+        except Exception as e:
+            print(f"Ошибка при polling: {e}, перезапускаю через 5 секунд...")
+            import time
+            time.sleep(5)
