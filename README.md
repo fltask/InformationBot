@@ -142,6 +142,7 @@
 * `alembic` — система миграций для БД
 * `python-dotenv` — загрузка переменных окружения
 * `requests` — HTTP-запросы к внешним API
+* 'APScheduler' 
 
 Полный список зависимостей в файле `requirements.txt`.
 

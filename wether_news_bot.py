@@ -1,8 +1,17 @@
+# 1. Импорты
+# — стандартные
 import os
+import locale
+from datetime import datetime
+import atexit
 
+# — сторонние
 import requests
 import telebot
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
+
+# — свои модули
 from database.config import get_db
 from database.crud import (
     get_or_create_user,
@@ -10,13 +19,9 @@ from database.crud import (
     update_user_subscription,
     unsubscribe_user,
     )
-from datetime import datetime
-import locale
+from database.models import User
 
-from database.config import get_db
-from database.crud import update_user_subscription, unsubscribe_user, get_or_create_user
-
-# Загрузка токена из файла .env
+# 2. Загрузка токенов из файла .env
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
@@ -26,15 +31,20 @@ EVENTS_API_KEY=os.getenv("EVENTS_API_KEY")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN не найден в переменных окружения")
 
+# 3. Настройка планировщика и телебота
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+# Чтобы он корректно завершался при остановке скрипта
+atexit.register(lambda: scheduler.shutdown())
 
 bot = telebot.TeleBot(TOKEN)
 
-
+# 4. Утилитарные функции
 def get_weather(city):
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=ru"
     response = requests.get(url)
     return response.json()
-
 
 def get_news():
     url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={NEWS_API_KEY}"
@@ -75,7 +85,48 @@ def format_datetime(dt_str):
     except Exception:
         return dt_str
 
+# 5. Функция send_daily_updates
+def send_daily_updates():
+    db = next(get_db())
+    try:
+        users = db.query(User).filter_by(subscription_settings="subscribed").all()
+        for user in users:
+            chat_id = user.telegram_id
+            try:
+                # Пример: отправка погоды для города по умолчанию
+                weather_data = get_weather("Москва")
+                if weather_data.get('cod') == 200:
+                    temp = round(weather_data['main']['temp'])
+                    descr = weather_data['weather'][0]['description']
+                    bot.send_message(chat_id, f"Погода сегодня: {descr}, {temp}°C")
+                else:
+                    bot.send_message(chat_id, "Не удалось получить данные о погоде.")
 
+                # Отправка новостей
+                articles = get_news()
+                if articles:
+                    news = "\n\n".join(f"{a.get('title')} — {a.get('url')}" for a in articles[:3])
+                    bot.send_message(chat_id, f"Новости:\n{news}")
+                else:
+                    bot.send_message(chat_id, "Не удалось получить новости.")
+
+                # Отправка событий
+                events = get_events("Москва")
+                if events:
+                    ev_msg = "\n\n".join(
+                        f"{ev['name']}\n{format_datetime(ev['starts_at'])}\n{ev['url']}"
+                        for ev in events[:3]
+                    )
+                    bot.send_message(chat_id, f"🎭 События:\n{ev_msg}")
+                else:
+                    bot.send_message(chat_id, "Нет новых событий.")
+
+            except Exception as e:
+                print(f"Ошибка при отправке пользователю {chat_id}: {e}")
+    finally:
+        db.close()
+
+# 6. Хендлеры команд: start, help, weather, news, events, subscribe, unsubscribe
 # /start
 @bot.message_handler(commands=["start"])
 def start_handler(message):
@@ -291,6 +342,7 @@ def events_handler(message):
         print(f'Ошибка: {e}')
         bot.send_message(message.chat.id, "Произошла ошибка при получении событий.")
 
+
 # /subscribe
 @bot.message_handler(commands=["subscribe"])
 def subscribe_handler(message):
@@ -301,6 +353,7 @@ def subscribe_handler(message):
         bot.send_message(message.chat.id, "Вы успешно подписались на рассылку!")
     finally:
         db.close()
+
 
 # /unsubscribe
 @bot.message_handler(commands=["unsubscribe"])
@@ -313,7 +366,11 @@ def unsubscribe_handler(message):
     finally:
         db.close()
 
-# Запуск бота
+# 7. Планировка задач APScheduler
+# Добавляем задачу: каждый день в 9:00
+scheduler.add_job(send_daily_updates, 'cron', hour=9, minute=0)
+
+# 8. Запуск бота
 if __name__ == "__main__":
     print("Бот запущен!")
     try:
