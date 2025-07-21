@@ -182,3 +182,5 @@ cython_debug/
 /alembic/versions/*
 *.db
 *.db
+*.db
+bot.db

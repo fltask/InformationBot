@@ -25,6 +25,7 @@ bot = telebot.TeleBot(TOKEN)
 def get_weather(city):
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=ru"
     response = requests.get(url)
+    print(response.json())
     return response.json()
 
 
@@ -63,7 +64,7 @@ except locale.Error:
 def format_datetime(dt_str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        return dt.strftime('%d %B %Y, %H:%M')
+        return dt.strftime('%d %m %Y, %H:%M')
     except Exception:
         return dt_str
 
@@ -129,51 +130,52 @@ def help_handler(message):
 def weather_handler(message):
     # Получаем сессию базы данных
     db = next(get_db())
-    try:
-        # Получаем пользователя
-        user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+    # try:
+    # Получаем пользователя
+    user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+    print(user)
+    # Получить название города после команды
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        bot.send_message(message.chat.id, "Пожалуйста, укажите город. Пример: /weather Москва")
+        # Логируем команду без города
+        create_log(db, user.id, "/weather (без города)")
+        return
 
-        # Получить название города после команды
-        parts = message.text.split(maxsplit=1)
-        if len(parts) < 2:
-            bot.send_message(message.chat.id, "Пожалуйста, укажите город. Пример: /weather Москва")
-            # Логируем команду без города
-            create_log(db, user.id, "/weather (без города)")
-            return
+    city = parts[1]
+    data = get_weather(city)
+    print(data)
+    if data.get('cod') != 200:
+        bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
+        # Логируем неудачный запрос
+        create_log(db, user.id, f"/weather {city} (город не найден)")
+        return
 
-        city = parts[1]
-        data = get_weather(city)
-        if data.get('cod') != 200:
-            bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
-            # Логируем неудачный запрос
-            create_log(db, user.id, f"/weather {city} (город не найден)")
-            return
+    temp = round(data['main']['temp'])
+    descr = data['weather'][0]['description']
+    humidity = data['main']['humidity']
+    wind = round(data['wind']['speed'])
+    msg = (f"Погода в городе {city}:\n"
+           f"{descr.capitalize()}\n"
+           f"Температура: {temp}°C\n"
+           f"Влажность: {humidity}%\n"
+           f"Ветер: {wind} м/с")
+    bot.send_message(message.chat.id, msg)
 
-        temp = round(data['main']['temp'])
-        descr = data['weather'][0]['description']
-        humidity = data['main']['humidity']
-        wind = round(data['wind']['speed'])
-        msg = (f"Погода в городе {city}:\n"
-               f"{descr.capitalize()}\n"
-               f"Температура: {temp}°C\n"
-               f"Влажность: {humidity}%\n"
-               f"Ветер: {wind} м/с")
-        bot.send_message(message.chat.id, msg)
+    # Логируем успешный запрос
+    create_log(db, user.id, f"/weather {city}")
 
-        # Логируем успешный запрос
-        create_log(db, user.id, f"/weather {city}")
-
-    except Exception as e:
-        print(f'Ошибка: {e}')
-        bot.send_message(message.chat.id, "Произошла ошибка при получении погоды.")
-        # Логируем ошибку
-        try:
-            user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
-            create_log(db, user.id, "/weather (ошибка)")
-        except:
-            pass
-    finally:
-        db.close()
+        # except Exception as e:
+        #     print(f'Ошибка: {e}')
+        #     bot.send_message(message.chat.id, "Произошла ошибка при получении погоды.")
+        #     # Логируем ошибку
+        #     try:
+        #         user = get_or_create_user(db, message.from_user.id, message.from_user.first_name or "Пользователь")
+        #         create_log(db, user.id, "/weather (ошибка)")
+        #     except:
+        #         pass
+        # finally:
+    db.close()
 
 
 # /news
