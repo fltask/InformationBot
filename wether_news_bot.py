@@ -7,6 +7,7 @@ from database.config import get_db
 from database.crud import get_or_create_user, create_log
 from datetime import datetime
 import locale
+import html
 
 # Загрузка токена из файла .env
 load_dotenv()
@@ -261,15 +262,15 @@ def events_handler(message):
 
         event_messages = []
         for ev in events:
-            name = ev.get('name', 'Без названия')
+            name = html.unescape(ev.get('name', 'Без названия'))
             starts_at = ev.get('starts_at', 'Дата неизвестна')
             readable_date = format_datetime(starts_at) if starts_at != 'Дата неизвестна' else starts_at
             url = ev.get('url', '')
-            loc = ev.get('location', {})
+            loc = html.unescape(ev.get('location', {}))
             location_str = ""
             if isinstance(loc, dict):
                 city_name = loc.get('city', '')
-                address = loc.get('address', '')
+                address = html.unescape(loc.get('address', ''))
                 location_str = f" ({city_name}, {address})" if city_name or address else ""
             event_messages.append(f"{name}{location_str}\nДата: {readable_date}\n{url}")
 
