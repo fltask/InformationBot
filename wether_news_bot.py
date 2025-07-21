@@ -145,7 +145,6 @@ def weather_handler(message):
 
     city = parts[1]
     data = get_weather(city)
-    print(data)
     if data.get('cod') != 200:
         bot.send_message(message.chat.id, f"Город '{city}' не найден. Попробуйте еще раз.")
         # Логируем неудачный запрос
