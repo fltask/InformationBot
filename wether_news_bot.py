@@ -64,7 +64,7 @@ except locale.Error:
 def format_datetime(dt_str):
     try:
         dt = datetime.fromisoformat(dt_str)
-        return dt.strftime('%d %m %Y, %H:%M')
+        return dt.strftime('%d.%m.%Y, %H:%M')
     except Exception:
         return dt_str
 
