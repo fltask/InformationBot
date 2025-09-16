@@ -35,10 +35,18 @@ def create_log(db: Session, user_id: int, command: str) -> Log:
 
 def get_user_logs(db: Session, user_id: int, limit: int = 10) -> list[Log]:
     """Получить логи пользователя"""
-    return db.query(Log).filter(Log.user_id == user_id).order_by(Log.timestamp.desc()).limit(limit).all()
+    return (
+        db.query(Log)
+        .filter(Log.user_id == user_id)
+        .order_by(Log.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
 
 
-def update_user_subscription(db: Session, user_id: int, subscription_settings: str) -> User:
+def update_user_subscription(
+    db: Session, user_id: int, subscription_settings: str
+) -> User:
     """Обновить настройки подписки пользователя"""
     user = db.query(User).filter(User.id == user_id).first()
     if user:

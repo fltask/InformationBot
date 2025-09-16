@@ -25,13 +25,17 @@ def check_database():
         print("\nПоследние 5 пользователей:")
         recent_users = db.query(User).order_by(User.registered_at.desc()).limit(5).all()
         for user in recent_users:
-            print(f"ID: {user.id}, Telegram ID: {user.telegram_id}, Имя: {user.name}, Зарегистрирован: {user.registered_at}")
+            print(
+                f"ID: {user.id}, Telegram ID: {user.telegram_id}, Имя: {user.name}, Зарегистрирован: {user.registered_at}"
+            )
 
         # Показываем последние 10 логов
         print("\nПоследние 10 логов:")
         recent_logs = db.query(Log).order_by(Log.timestamp.desc()).limit(10).all()
         for log in recent_logs:
-            print(f"ID: {log.id}, Пользователь ID: {log.user_id}, Команда: {log.command}, Время: {log.timestamp}")
+            print(
+                f"ID: {log.id}, Пользователь ID: {log.user_id}, Команда: {log.command}, Время: {log.timestamp}"
+            )
 
     except Exception as e:
         print(f"Ошибка при проверке базы данных: {e}")

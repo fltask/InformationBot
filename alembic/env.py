@@ -1,3 +1,4 @@
+from database.models import Base
 from logging.config import fileConfig
 import os
 from dotenv import load_dotenv
@@ -21,7 +22,6 @@ if config.config_file_name is not None:
 
 # добавьте объект MetaData вашей модели здесь
 # для поддержки 'autogenerate'
-from database.models import Base
 target_metadata = Base.metadata
 
 # другие значения из конфигурации, определенные потребностями env.py,
@@ -83,9 +83,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
