@@ -244,3 +244,4 @@ alembic downgrade -1
 ## Лицензия
 
 Проект распространяется под MIT License.
+
