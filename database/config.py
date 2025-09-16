@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+from database.models import Base
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -14,6 +15,9 @@ if not DATABASE_URL:
 
 # Создаем движок базы данных
 engine = create_engine(DATABASE_URL)
+
+# Создаем все таблицы
+Base.metadata.create_all(bind=engine)
 
 # Создаем фабрику сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
