@@ -1,9 +1,13 @@
+"""
+SQLAlchemy модели базы данных для информационного бота.
+"""
+
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
-# Создаем базовый класс для моделей
+# Базовый класс для моделей
 Base = declarative_base()
 
 
@@ -16,7 +20,6 @@ class User(Base):
     telegram_id = Column(Integer, unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     registered_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    # JSON строка с настройками подписки
     subscription_settings = Column(Text, nullable=True)
 
     # Связь с логами
