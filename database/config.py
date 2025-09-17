@@ -1,3 +1,7 @@
+"""
+Конфигурация подключения к базе данных и управление сессиями.
+"""
+
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -19,12 +23,17 @@ engine = create_engine(DATABASE_URL)
 # Создаем все таблицы
 Base.metadata.create_all(bind=engine)
 
-# Создаем фабрику сессий
+# Фабрика сессий
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
-    """Получить сессию базы данных"""
+    """
+    Генератор сессий базы данных.
+
+    Открывает сессию, отдает ее в контексте работы,
+    а после завершения — закрывает.
+    """
     db = SessionLocal()
     try:
         yield db
