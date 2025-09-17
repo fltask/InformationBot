@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 
 def check_database():
-        """
+    """
     Проверка базы данных.
 
     - Считает пользователей и логи
