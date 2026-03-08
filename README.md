@@ -245,3 +245,9 @@ alembic downgrade -1
 
 Проект распространяется под MIT License.
 
+---
+
+## Demo
+
+**Demo video:**
+https://youtu.be/ecm7g1PmykA
